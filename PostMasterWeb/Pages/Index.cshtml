@@ -1,0 +1,168 @@
+﻿@page
+@model PostMasterWeb.Pages.IndexModel
+@using PostMasterWeb
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Http;
+@inject UserModel  _UserModel
+@inject ApiContext  _ApiContext
+@{
+
+    var CategoryId = HttpContext.Request.Query["category"].ToString();
+    CategoryId = !string.IsNullOrEmpty(CategoryId) ? CategoryId : "0";
+    var User = _UserModel.LoggedIn();
+
+    var Posts = _ApiContext.Posts
+        .Include(p => p.User)
+        .Include(p => p.Category);
+
+    if (Int32.Parse(CategoryId) > 0)
+    {
+        Posts = _ApiContext.Posts
+            .Where(p => p.CategoryId == Int32.Parse(CategoryId))
+            .Include(p => p.User)
+            .Include(p => p.Category);
+    }
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>PostMaster - אתר הפוסטים של ישראל</title>
+    <link href="css/style.css" rel="stylesheet" />
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+    <script src="js/main.js"></script>
+</head>
+<body dir="rtl">
+    <header class="box">
+        <div class="container">
+            <a href="/" id="logo"><img src="images/logo.png" /></a>
+            <ul>
+                <li>
+                    <a href="#">קטגוריות</a>
+                    <ul class="box box-content">
+                        @foreach (Category category in _ApiContext.Categories)
+                        {
+                            <li><a href="?category=@category.Id">@category.Name</a></li>
+                        }
+                    </ul>
+                </li>
+                <li><a href="#">אודות</a></li>
+                <li><a href="#">צור קשר</a></li>
+            </ul>
+            <div id="user">
+                @if (User == null)
+                {
+                    <a id="loginBtn">התחברות</a>
+                    <a id="signupBtn">הרשמה</a>
+                }
+                else
+                {
+                    <span>שלום @User.Name</span>
+                    <a id="postBtn">פוסט חדש</a>
+                }
+            </div>
+        </div>
+    </header>
+    <div id="page" class="container">
+        <aside class="box box-content box-radius">
+            <ul>
+                @foreach (Category category in _ApiContext.Categories)
+                {
+                    <li><a href="?category=@category.Id">@category.Name</a></li>
+                }
+            </ul>
+        </aside>
+        <div id="posts">
+            @foreach (Post post in Posts.AsEnumerable().Reverse())
+            {
+                <article>
+                    @{
+                        var CurrentUser = _ApiContext.Users.Single(u => u.Id == post.UserId);
+                        var UserPosts = CurrentUser.Posts.Count;
+                    }
+                    <div class="box box-radius">
+                        <div class="box-content">
+                            <p>@post.Content</p>
+                            <div class="article-footer">
+                                @if (User != null && post.UserId == User.Id)
+                                {
+                                    <a href="#" class="edit" data-postid="@post.Id">עריכה</a>
+                                    <a href="#" class="remove" data-postid="@post.Id">מחיקה</a>
+                                    <a href="#" class="ok hidden" data-postid="@post.Id">אישור</a>
+                                    <a href="#" class="cancel hidden">ביטול</a>
+                                }
+
+                                <span>@post.CreatedOn</span>
+                            </div>
+                        </div>
+                        <div class="box-content">
+                            <a href="?category=@post.CategoryId">@post.Category.Name</a>
+                            <a>@post.User.Name</a>
+                            <span><strong>פוסטים:</strong> @UserPosts</span>
+                        </div>
+                    </div>
+                </article>
+            }
+        </div>
+    </div>
+    <div id="black"></div>
+    <div id="login" class="box box-radius box-content">
+        <a href="#" class="closeDialog">x</a>
+        <form action="/api/users/login" method="post">
+            <table>
+
+                <tr>
+                    <td>אימייל:</td>
+                    <td> <input type="text" name="email" /></td>
+                </tr>
+                <tr>
+                    <td> סיסמא: </td>
+                    <td><input type="password" name="password" /></td>
+
+                </tr>
+            </table>
+            <input type="submit" />
+
+        </form>
+    </div>
+    <div id="signup" class="box box-radius box-content ">
+        <a href="#" class="closeDialog">x</a>
+        <form action="/api/users/signup" method="post">
+            <table>
+                <tr>
+                    <td>שם:</td>
+                    <td> <input type="text" name="name" /></td>
+                </tr>
+
+                <tr>
+                    <td>אימייל:</td>
+                    <td><input type="text" name="email" /></td>
+
+                </tr>
+                <tr>
+                    <td>טלפון:</td>
+                    <td><input type="text" name="phone" /></td>
+                </tr>
+                <tr>
+                    <td>סיסמא:</td>
+                    <td><input type="password" name="password" /></td>
+                </tr>
+            </table>
+            <input type="submit" />
+        </form>
+    </div>
+    <div id="post" class="box box-radius box-content">
+        <a href="#" class="closeDialog">x</a>
+        <form action="/api/posts/create" method="post">
+            <select name="categoryID">
+                @foreach (Category category in _ApiContext.Categories)
+                {
+                    <option value="@category.Id">@category.Name</option>
+                }
+            </select>
+            <textarea name="content" placeholder="הכנס כאן את תוכן הפוסט..."></textarea>
+            <input type="submit" />
+        </form>
+    </div>
+</body>
+</html>
